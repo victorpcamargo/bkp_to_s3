@@ -2,6 +2,7 @@
 
 import time
 import subprocess
+import os.path
 
 def main():
 
@@ -67,27 +68,43 @@ def fim(diaInicio, horaInicio, backup, pathlog):
 
 #CONSTROI OS LOGS DO SISTEMA - Definir nome do backup e o arquivo de logs que quer criar.
 def geralog():
-    date        = (time.strftime("%Y-%m-%d"))               # Cria data
-    logfile     = '%s-backup.log' % date                    # Cria arquivo de Log
-    pathlog     = '/root/scripts/backup/logs/%s' % logfile  # Arquivo de log
+    date        = (time.strftime("%Y-%m-%d"))         # Cria data
+    logfile     = '%s-backup.log' % date              # Cria arquivo de Log
+    pathlog    = '/home/victor/scripts/backup2/logs/' # Define diretório para log
 
-    return pathlog
+    if os.path.exists(pathlog):
+        addlogfile = '%s%s' % (pathlog, logfile)      # Arquivo de log
+    else:
+        os.mkdir(pathlog)
+        addlogfile = '%s%s' % (pathlog, logfile)      # Arquivo de log
+
+    return addlogfile
 
 #CONSTROI O ARQUIVO E PATH DE BACKUP E RETORNA
 def gerabackup():
     date         = (time.strftime("%Y-%m-%d"))                     # Cria data
     hora         = (time.strftime('%H-%M-%S'))                     # Cria hora
     swiftstorage = 's3://backup_sonar_db'                          # Define endereço ObjectStorage
-    backupfile   = '%s_%s-bkp-pgdump.tar.gz' % (date,hora)         # Cria o nome do arquivo de Backup
-    pathdestino  = '/root/scripts/backup/destino/%s' % backupfile  # Define destino onde será gravado o Backup
-    pathorigem   = '/root/scripts/backup/origem/'                  # Define Pasta que será 'backupeada'
+    pathdestino  = '/home/victor/scripts/backup2/destino/'                   # Define destino onde será gravado o Backup
+    pathorigem   = '/home/victor/scripts/backup2/origem/'                    # Define Pasta que será 'backupeada'
+    backupfile   = '%s%s_%s-bkp-pgdump.tar.gz' % (pathdestino, date, hora)   # Define o nome do arquivo de Backup
 
     #dumpfile   = '/opt/rh/postgresql92/root/usr/bin/pg_dump -U sonar > /%s/%s-%s-PGDUMP.sql' % (pathorigem, date, hora) # Gera o dumpfile do banco
-
-    dumpfile = '/bin/touch %s%s_%s-PGTESTE.sql' % (pathorigem, date, hora)                       # Gera arquivo de teste
-    backup   = 'tar -P -cvf %s %s%s_%s-PGTESTE.sql' % (pathdestino, pathorigem, date, hora)      # Compacta arquivo de dump
-    upload   = '/opt/itau_sysadmintools/s3cmd/bin/s3cmd put %s %s' % (pathdestino, swiftstorage) # Faz upload para o Object Storage   
     
+    if os.path.exists(pathorigem):
+        dumpfile = '/bin/touch %s%s_%s-PGTESTE.sql' % (pathorigem, date, hora)                       # Gera arquivo de teste
+    else:
+        os.mkdir(pathorigem)
+        dumpfile = '/bin/touch %s%s_%s-PGTESTE.sql' % (pathorigem, date, hora)                       # Gera arquivo de teste
+
+    if os.path.exists(pathdestino):
+        backup   = 'tar -P -cvf %s %s%s_%s-PGTESTE.sql' % (backupfile, pathorigem, date, hora)      # Compacta arquivo de dump
+        upload   = '/opt/itau_sysadmintools/s3cmd/bin/s3cmd put %s %s' % (backupfile, swiftstorage) # Faz upload para o Object Storage
+    else:
+        os.mkdir(pathdestino)
+        backup   = 'tar -P -cvf %s %s%s_%s-PGTESTE.sql' % (backupfile, pathorigem, date, hora)      # Compacta arquivo de dump
+        upload   = '/opt/itau_sysadmintools/s3cmd/bin/s3cmd put %s %s' % (backupfile, swiftstorage) # Faz upload para o Object Storage
+
     return dumpfile,backup,upload
 
 #Roda a funcao main no inicio do codigo
